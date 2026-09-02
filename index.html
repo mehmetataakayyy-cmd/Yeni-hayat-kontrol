@@ -179,10 +179,6 @@
 </div>
 
 <script>
-/* ==========================================================
-   Ana uygulamayla AYNI firebaseConfig değerlerini buraya da
-   yapıştırın.
-   ========================================================== */
 const firebaseConfig = {
   apiKey: "AIzaSyCUfXgp9dI5yfFtvkOozOeF9ndnKqpjbZE",
   authDomain: "yeni-hayat-kumarla-mucad-2aea4.firebaseapp.com",
@@ -195,8 +191,6 @@ firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
 
-/* Yönetici e-postanızı buraya girin. Yalnızca bu e-posta ile
-   giriş yapan kişi panele erişebilir. */
 const ADMIN_EMAIL = "mehmetataakayyy@gmail.com";
 
 function adminLogin(){
@@ -238,7 +232,6 @@ auth.onAuthStateChanged(function(user){
   }
 });
 
-/* ---------- Tarayıcı bildirimleri ---------- */
 let notifsEnabled = false;
 function enableBrowserNotifs(){
   Notification.requestPermission().then(function(perm){
@@ -266,8 +259,10 @@ function esc(s){
   return d.innerHTML;
 }
 function fmtDate(ts){
-  if(!ts || !ts.toDate) return '';
-  return ts.toDate().toLocaleString('tr-TR');
+  if(!ts) return '';
+  if(ts.toDate) return ts.toDate().toLocaleString('tr-TR');
+  if(typeof ts === 'string') return ts;
+  return '';
 }
 
 /* ---------- Kullanıcılar ---------- */
@@ -289,7 +284,12 @@ function loadUsers(){
     panel.innerHTML = snap.docs.map(function(d){
       const u = d.data();
       const blocked = u.blocked === true;
-      return '<div class="card row"><div>'+esc(u.email)+(blocked?' <span class="badge">engelli</span>':'')+'<div class="muted" style="margin-top:3px;">'+fmtDate(u.createdAt)+'</div></div>' +
+      
+      // Esnek e-posta ve tarih tespiti
+      const userEmail = u.email || u.ePosta || u.mail || u.userEmail || u.eposta || '(E-posta Belirtilmedi)';
+      const userDate = u.createdAt || u.kayitTarihi || u.date || u.created_at || '';
+      
+      return '<div class="card row"><div>'+esc(userEmail)+(blocked?' <span class="badge">engelli</span>':'')+'<div class="muted" style="margin-top:3px;">'+fmtDate(userDate)+'</div></div>' +
         '<div style="display:flex; gap:8px;">' +
         '<button class="btn ghost" onclick="viewProfile(\''+d.id+'\')">Profili Gör</button>' +
         '<button class="btn '+(blocked?'ghost':'danger')+'" onclick="toggleBlock(\''+d.id+'\', '+(!blocked)+')">'+(blocked?'Engeli Kaldır':'Engelle')+'</button>' +
