@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Yeni Hayat — Yönetim Paneli</title>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1d17; --bg-soft:#132419; --surface:#1a2e22; --surface-hi:#22392a;
+    --line:#2b4536; --line-soft:#203527;
+    --text:#eef5ee; --muted:#8fab98; --muted-dim:#6c8778;
+    --accent:#9cba6d; --accent-deep:#7a9a52; --accent-ink:#0f1d17;
+    --gold:#dcac52; --gold-soft:#3a3322;
+    --danger:#c97169; --danger-soft:#3a2422;
+  }
+  *{box-sizing:border-box;}
+  html,body{ margin:0; padding:0; }
+  body{
+    background:
+      radial-gradient(1200px 600px at 15% -10%, rgba(156,186,109,.08), transparent 60%),
+      var(--bg);
+    color:var(--text);
+    font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  h1,h2,h3{ font-family:'Fraunces',Georgia,serif; font-weight:600; letter-spacing:-.01em; margin:0; }
+  .wrap{ max-width:920px; margin:0 auto; padding:32px 18px 90px; }
+
+  /* ---- Header ---- */
+  .header{ margin-bottom:22px; }
+  .header-top{ display:flex; justify-content:space-between; align-items:flex-start; gap:12px; }
+  .eyebrow{ font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--accent); margin-bottom:6px; display:flex; align-items:center; gap:8px; }
+  .eyebrow::before{ content:''; width:6px; height:6px; border-radius:50%; background:var(--accent); box-shadow:0 0 0 3px rgba(156,186,109,.18); }
+  h1.title{ font-size:26px; }
+  .sub{ color:var(--muted); font-size:13px; margin-top:8px; max-width:520px; line-height:1.55; }
+  .header-rule{ height:1px; background:linear-gradient(90deg, var(--line), transparent); margin-top:20px; }
+
+  button{ font-family:inherit; cursor:pointer; }
+  .btn{ background:var(--accent); color:var(--accent-ink); border:none; padding:9px 14px; border-radius:9px; font-size:12.5px; font-weight:700; transition:transform .12s, background .12s; }
+  .btn:active{ transform:scale(.97); }
+  .btn.danger{ background:var(--danger); color:#1b0f0e; }
+  .btn.ghost{ background:none; border:1px solid var(--line); color:var(--text); padding:9px 14px; border-radius:9px; font-size:12.5px; }
+  .btn.ghost:hover{ border-color:var(--accent); color:var(--accent); }
+
+  input, textarea{ width:100%; padding:12px 13px; border-radius:10px; border:1px solid var(--line); background:var(--bg-soft); color:var(--text); font-size:14px; margin-bottom:10px; font-family:inherit; }
+  input:focus, textarea:focus{ outline:none; border-color:var(--accent); }
+
+  /* ---- Login ---- */
+  #loginBox{ max-width:340px; margin:14vh auto 0; text-align:center; padding:0 18px; }
+  #loginBox .eyebrow{ justify-content:center; }
+  #loginBox h2{ font-size:24px; margin-bottom:22px; }
+  .err{ color:var(--danger); font-size:12.5px; margin-top:10px; display:none; text-align:left; line-height:1.5; }
+
+  /* ---- Stat strip (signature element) ---- */
+  .stats{ display:grid; grid-template-columns:repeat(2,1fr); gap:10px; margin:20px 0 24px; }
+  .stat{ background:var(--surface); border:1px solid var(--line-soft); border-radius:14px; padding:16px 16px 14px; position:relative; overflow:hidden; }
+  .stat::after{ content:''; position:absolute; right:-18px; bottom:-18px; width:70px; height:70px; border-radius:50%; background:radial-gradient(circle, rgba(156,186,109,.10), transparent 70%); }
+  .stat-num{ font-family:'Fraunces',serif; font-size:30px; font-weight:600; line-height:1; }
+  .stat-label{ font-size:11.5px; color:var(--muted); margin-top:6px; letter-spacing:.02em; }
+  .stat.gold .stat-num{ color:var(--gold); }
+  .stat.danger .stat-num{ color:var(--danger); }
+
+  /* ---- Tabs: journal section nav ---- */
+  .tabs{ display:flex; gap:2px; margin-bottom:18px; overflow-x:auto; border-bottom:1px solid var(--line-soft); padding-bottom:0; -webkit-overflow-scrolling:touch; }
+  .tabs::-webkit-scrollbar{ display:none; }
+  .tab{ background:none; border:none; color:var(--muted); padding:10px 14px 12px; font-size:13px; font-weight:500; white-space:nowrap; position:relative; border-bottom:2px solid transparent; margin-bottom:-1px; }
+  .tab.active{ color:var(--text); border-bottom-color:var(--accent); }
+  .tab .count{ font-family:'JetBrains Mono',monospace; font-size:10.5px; color:var(--gold); margin-left:5px; }
+
+  .panel{ display:none; }
+  .panel.active{ display:block; animation:fadeIn .25s ease; }
+  @keyframes fadeIn{ from{ opacity:0; transform:translateY(4px);} to{ opacity:1; transform:none; } }
+
+  .card{ background:var(--surface); border:1px solid var(--line-soft); border-radius:13px; padding:15px 17px; margin-bottom:11px; }
+  .row{ display:flex; justify-content:space-between; align-items:center; gap:10px; }
+  .muted{ color:var(--muted); font-size:12px; }
+  .empty{ color:var(--muted-dim); font-size:13px; text-align:center; padding:44px 20px; font-style:italic; }
+  .storyText{ font-family:'Fraunces',serif; font-style:italic; font-size:15px; line-height:1.5; margin:2px 0 8px; }
+  .badge{ display:inline-block; font-size:10.5px; padding:2px 7px; border-radius:6px; background:var(--danger-soft); color:var(--danger); margin-left:6px; font-weight:600; }
+
+  #notifPermCard{ border-color:var(--gold); background:linear-gradient(180deg, var(--gold-soft), var(--surface)); }
+
+  /* ---- Profil modal ---- */
+  .modal-backdrop{ display:none; position:fixed; inset:0; background:rgba(6,12,8,.6); z-index:50; align-items:center; justify-content:center; padding:18px; }
+  .modal-backdrop.active{ display:flex; }
+  .modal{ background:var(--surface); border:1px solid var(--line); border-radius:16px; max-width:420px; width:100%; max-height:80vh; overflow-y:auto; padding:20px; }
+  .modal h3{ font-size:18px; margin-bottom:14px; }
+  .modal-field{ padding:9px 0; border-bottom:1px solid var(--line-soft); }
+  .modal-field:last-child{ border-bottom:none; }
+  .modal-key{ font-family:'JetBrains Mono',monospace; font-size:10.5px; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; margin-bottom:3px; }
+  .modal-val{ font-size:13.5px; word-break:break-word; }
+  .modal-close{ margin-top:16px; width:100%; }
+</style>
+</head>
+<body>
+
+<div id="loginBox">
+  <div class="eyebrow">Yeni Hayat</div>
+  <h2>Yönetim Günlüğü</h2>
+  <input id="loginEmail" type="email" placeholder="Yönetici e-posta">
+  <input id="loginPassword" type="password" placeholder="Şifre">
+  <button class="btn" style="width:100%; padding:13px;" onclick="adminLogin()">Giriş Yap</button>
+  <div class="err" id="loginErr"></div>
+</div>
+
+<div class="wrap" id="dashboard" style="display:none;">
+
+  <div class="header">
+    <div class="header-top">
+      <div>
+        <div class="eyebrow">Yönetim Günlüğü</div>
+        <h1 class="title">Bugüne Bakış</h1>
+      </div>
+      <button class="btn ghost" onclick="auth.signOut()">Çıkış Yap</button>
+    </div>
+    <p class="sub">Bu sayfa sadece yönetici hesabıyla erişilebilir. Buradaki hiçbir veri diğer kullanıcılara gösterilmez.</p>
+    <div class="header-rule"></div>
+  </div>
+
+  <div class="stats">
+    <div class="stat">
+      <div class="stat-num" id="statUsers">–</div>
+      <div class="stat-label">Kayıtlı kullanıcı</div>
+    </div>
+    <div class="stat gold">
+      <div class="stat-num" id="statPending">–</div>
+      <div class="stat-label">Onay bekleyen paylaşım</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num" id="statFeedback">–</div>
+      <div class="stat-label">Sorun ve öneri mesajı</div>
+    </div>
+    <div class="stat danger">
+      <div class="stat-num" id="statBlocked">–</div>
+      <div class="stat-label">Engellenen kullanıcı</div>
+    </div>
+  </div>
+
+  <div class="card" id="notifPermCard" style="display:none;">
+    <div class="row">
+      <span style="font-size:13px;">🔔 Bu sekme açık kaldığı sürece yeni gelişmelerde anında bildirim alın</span>
+      <button class="btn" onclick="enableBrowserNotifs()" style="white-space:nowrap;">Aç</button>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" data-tab="users" onclick="switchTab('users')">Kullanıcılar</button>
+    <button class="tab" data-tab="stories" onclick="switchTab('stories')">Onay Bekleyen</button>
+    <button class="tab" data-tab="approved" onclick="switchTab('approved')">Yayındaki Paylaşımlar</button>
+    <button class="tab" data-tab="feedback" onclick="switchTab('feedback')">Sorun ve Öneriler</button>
+    <button class="tab" data-tab="notify" onclick="switchTab('notify')">Bildirim Gönder</button>
+  </div>
+
+  <div class="panel active" id="panel-users"></div>
+  <div class="modal-backdrop" id="profileModal" onclick="if(event.target===this) closeProfile()">
+    <div class="modal">
+      <h3>Üye Profili</h3>
+      <div id="profileFields"></div>
+      <button class="btn ghost modal-close" onclick="closeProfile()">Kapat</button>
+    </div>
+  </div>
+  <div class="panel" id="panel-stories"></div>
+  <div class="panel" id="panel-approved"></div>
+  <div class="panel" id="panel-feedback"></div>
+  <div class="panel" id="panel-notify">
+    <div class="card">
+      <p class="muted" style="margin-top:0;">Bu bildirim, uygulamayı kullanan <strong>tüm kullanıcılara</strong> gönderilir.</p>
+      <input id="notifyText" placeholder="Bildirim mesajı yaz...">
+      <button class="btn" onclick="sendNotification()">Gönder</button>
+    </div>
+    <div id="notifyList"></div>
+  </div>
+</div>
+
+<script>
+/* ==========================================================
+   Ana uygulamayla AYNI firebaseConfig değerlerini buraya da
+   yapıştırın.
+   ========================================================== */
+const firebaseConfig = {
+  apiKey: "AIzaSyCUfXgp9dI5yfFtvkOozOeF9ndnKqpjbZE",
+  authDomain: "yeni-hayat-kumarla-mucad-2aea4.firebaseapp.com",
+  projectId: "yeni-hayat-kumarla-mucad-2aea4",
+  storageBucket: "yeni-hayat-kumarla-mucad-2aea4.firebasestorage.app",
+  messagingSenderId: "363193737698",
+  appId: "1:363193737698:web:e1f320346d6802c55ed9bb"
+};
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+
+/* Yönetici e-postanızı buraya girin. Yalnızca bu e-posta ile
+   giriş yapan kişi panele erişebilir. */
+const ADMIN_EMAIL = "mehmetataakayyy@gmail.com";
+
+function adminLogin(){
+  const email = document.getElementById('loginEmail').value.trim();
+  const password = document.getElementById('loginPassword').value;
+  const err = document.getElementById('loginErr');
+  err.style.display = 'none';
+  auth.signInWithEmailAndPassword(email, password).catch(function(e){
+    err.textContent = 'Hata (' + e.code + '): ' + e.message;
+    err.style.display = 'block';
+  });
+}
+
+auth.onAuthStateChanged(function(user){
+  const err = document.getElementById('loginErr');
+  if(user && user.email === ADMIN_EMAIL){
+    document.getElementById('loginBox').style.display = 'none';
+    document.getElementById('dashboard').style.display = 'block';
+    if('Notification' in window){
+      if(Notification.permission === 'default'){
+        document.getElementById('notifPermCard').style.display = 'block';
+      } else if(Notification.permission === 'granted'){
+        notifsEnabled = true;
+      }
+    }
+    loadUsers();
+    loadPendingStories();
+    loadApprovedStories();
+    loadFeedback();
+    loadNotifications();
+  } else {
+    document.getElementById('dashboard').style.display = 'none';
+    document.getElementById('loginBox').style.display = 'block';
+    if(user && user.email !== ADMIN_EMAIL){
+      err.textContent = 'Bu hesabın yönetici yetkisi yok.';
+      err.style.display = 'block';
+      auth.signOut();
+    }
+  }
+});
+
+/* ---------- Tarayıcı bildirimleri ---------- */
+let notifsEnabled = false;
+function enableBrowserNotifs(){
+  Notification.requestPermission().then(function(perm){
+    if(perm === 'granted'){
+      notifsEnabled = true;
+      document.getElementById('notifPermCard').style.display = 'none';
+      new Notification('Bildirimler açıldı 🔔', { body: 'Bu sekme açık kaldığı sürece yeni gelişmelerden haberdar olacaksınız.' });
+    }
+  });
+}
+function pushBrowserNotif(title, body){
+  if(notifsEnabled){
+    try{ new Notification(title, { body: body }); }catch(e){}
+  }
+}
+
+function switchTab(name){
+  document.querySelectorAll('.tab').forEach(function(t){ t.classList.toggle('active', t.dataset.tab===name); });
+  document.querySelectorAll('.panel').forEach(function(p){ p.classList.toggle('active', p.id==='panel-'+name); });
+}
+
+function esc(s){
+  const d = document.createElement('div');
+  d.textContent = s || '';
+  return d.innerHTML;
+}
+function fmtDate(ts){
+  if(!ts || !ts.toDate) return '';
+  return ts.toDate().toLocaleString('tr-TR');
+}
+
+/* ---------- Kullanıcılar ---------- */
+let usersKnownIds = null;
+function loadUsers(){
+  const panel = document.getElementById('panel-users');
+  panel.innerHTML = '<div class="empty">Yükleniyor...</div>';
+  db.collection('users').onSnapshot(function(snap){
+    document.getElementById('statUsers').textContent = snap.size;
+    document.getElementById('statBlocked').textContent = snap.docs.filter(function(d){ return d.data().blocked === true; }).length;
+    if(snap.empty){ panel.innerHTML = '<div class="empty">Henüz kayıtlı kullanıcı yok.</div>'; usersKnownIds = new Set(); return; }
+    const currentIds = new Set(snap.docs.map(function(d){ return d.id; }));
+    if(usersKnownIds !== null){
+      currentIds.forEach(function(id){
+        if(!usersKnownIds.has(id)) pushBrowserNotif('👤 Yeni kullanıcı', 'Uygulamaya yeni bir kullanıcı kaydoldu.');
+      });
+    }
+    usersKnownIds = currentIds;
+    panel.innerHTML = snap.docs.map(function(d){
+      const u = d.data();
+      const blocked = u.blocked === true;
+      return '<div class="card row"><div>'+esc(u.email)+(blocked?' <span class="badge">engelli</span>':'')+'<div class="muted" style="margin-top:3px;">'+fmtDate(u.createdAt)+'</div></div>' +
+        '<div style="display:flex; gap:8px;">' +
+        '<button class="btn ghost" onclick="viewProfile(\''+d.id+'\')">Profili Gör</button>' +
+        '<button class="btn '+(blocked?'ghost':'danger')+'" onclick="toggleBlock(\''+d.id+'\', '+(!blocked)+')">'+(blocked?'Engeli Kaldır':'Engelle')+'</button>' +
+        '</div></div>';
+    }).join('');
+  });
+}
+function toggleBlock(uid, block){
+  db.collection('users').doc(uid).update({ blocked: block });
+}
+
+/* ---------- Üye profili ---------- */
+function fmtVal(v){
+  if(v === null || v === undefined || v === '') return '—';
+  if(v && typeof v.toDate === 'function') return v.toDate().toLocaleString('tr-TR');
+  if(typeof v === 'boolean') return v ? 'Evet' : 'Hayır';
+  if(Array.isArray(v)) return v.length ? v.map(function(x){ return esc(String(x)); }).join(', ') : '—';
+  if(typeof v === 'object') return esc(JSON.stringify(v));
+  return esc(String(v));
+}
+function daysSince(dateStr){
+  if(!dateStr) return null;
+  const start = new Date(dateStr+'T00:00:00');
+  if(isNaN(start.getTime())) return null;
+  const now = new Date();
+  const diff = Math.floor((now - start) / (1000*60*60*24));
+  return Math.max(0, diff);
+}
+function viewProfile(uid){
+  const box = document.getElementById('profileFields');
+  box.innerHTML = '<div class="empty">Yükleniyor...</div>';
+  document.getElementById('profileModal').classList.add('active');
+  db.collection('users').doc(uid).get().then(function(doc){
+    if(!doc.exists){ box.innerHTML = '<div class="empty">Bu kullanıcı bulunamadı.</div>'; return; }
+    const data = doc.data();
+    const keys = Object.keys(data).sort();
+    let html = '';
+    const d = daysSince(data.startDate);
+    if(d !== null){
+      html += '<div class="stats" style="grid-template-columns:1fr; margin-top:0;">' +
+        '<div class="stat"><div class="stat-num">'+d+' <span style="font-size:16px;">Gün</span></div>' +
+        '<div class="stat-label">Kumarsız Geçen Gün</div></div></div>';
+    } else {
+      html += '<div class="empty" style="padding:14px 4px;">Bu kullanıcı henüz başlangıç tarihi belirlememiş, sayaç gösterilemiyor.</div>';
+    }
+    html += '<div class="modal-field"><div class="modal-key">uid</div><div class="modal-val">'+esc(uid)+'</div></div>';
+    html += keys.map(function(k){
+      return '<div class="modal-field"><div class="modal-key">'+esc(k)+'</div><div class="modal-val">'+fmtVal(data[k])+'</div></div>';
+    }).join('');
+    box.innerHTML = html;
+  }).catch(function(err){
+    box.innerHTML = '<div class="empty">Yüklenirken hata oluştu: '+esc(err.message)+'</div>';
+  });
+}
+function closeProfile(){
+  document.getElementById('profileModal').classList.remove('active');
+}
+
+/* ---------- Onay bekleyen paylaşımlar ---------- */
+let pendingKnownIds = null;
+function loadPendingStories(){
+  const panel = document.getElementById('panel-stories');
+  panel.innerHTML = '<div class="empty">Yükleniyor...</div>';
+  db.collection('stories').where('status','==','pending').orderBy('createdAt','desc').onSnapshot(function(snap){
+    document.getElementById('statPending').textContent = snap.size;
+    document.querySelector('.tab[data-tab="stories"] .count') && document.querySelector('.tab[data-tab="stories"] .count').remove();
+    if(snap.size > 0){
+      document.querySelector('[data-tab="stories"]').innerHTML = 'Onay Bekleyen<span class="count">'+snap.size+'</span>';
+    } else {
+      document.querySelector('[data-tab="stories"]').innerHTML = 'Onay Bekleyen';
+    }
+    if(snap.empty){ panel.innerHTML = '<div class="empty">Onay bekleyen paylaşım yok.</div>'; pendingKnownIds = new Set(); return; }
+    const currentIds = new Set(snap.docs.map(function(d){ return d.id; }));
+    if(pendingKnownIds !== null){
+      currentIds.forEach(function(id){
+        if(!pendingKnownIds.has(id)) pushBrowserNotif('📝 Yeni paylaşım', 'Onay bekleyen yeni bir hikaye var.');
+      });
+    }
+    pendingKnownIds = currentIds;
+    panel.innerHTML = snap.docs.map(function(d){
+      const s = d.data();
+      const photo = s.photo ? '<img src="'+s.photo+'" style="max-width:100%; border-radius:8px; margin-bottom:8px;">' : '';
+      return '<div class="card">' + photo +
+        '<div class="storyText">"'+esc(s.text)+'"</div>' +
+        '<div class="muted">— '+esc(s.name)+' · '+fmtDate(s.createdAt)+'</div>' +
+        '<div class="row" style="margin-top:10px;">' +
+          '<button class="btn" onclick="approveStory(\''+d.id+'\')">Onayla</button>' +
+          '<button class="btn danger" onclick="rejectStory(\''+d.id+'\')">Reddet</button>' +
+        '</div></div>';
+    }).join('');
+  });
+}
+function approveStory(id){
+  db.collection('stories').doc(id).update({ status: 'approved' });
+}
+function rejectStory(id){
+  db.collection('stories').doc(id).update({ status: 'rejected' });
+}
+
+/* ---------- Yayındaki paylaşımlar ---------- */
+function loadApprovedStories(){
+  const panel = document.getElementById('panel-approved');
+  panel.innerHTML = '<div class="empty">Yükleniyor...</div>';
+  db.collection('stories').where('status','==','approved').orderBy('createdAt','desc').onSnapshot(function(snap){
+    if(snap.empty){ panel.innerHTML = '<div class="empty">Yayında paylaşım yok.</div>'; return; }
+    panel.innerHTML = snap.docs.map(function(d){
+      const s = d.data();
+      return '<div class="card"><div class="storyText">"'+esc(s.text)+'"</div>' +
+        '<div class="muted">— '+esc(s.name)+' · '+fmtDate(s.createdAt)+'</div>' +
+        '<div class="row" style="margin-top:10px;"><button class="btn danger" onclick="deleteStory(\''+d.id+'\')">Kaldır</button></div></div>';
+    }).join('');
+  });
+}
+function deleteStory(id){
+  if(!confirm('Bu paylaşımı kaldırmak istediğinize emin misiniz?')) return;
+  db.collection('stories').doc(id).delete();
+}
+
+/* ---------- Bildirim gönder ---------- */
+function sendNotification(){
+  const el = document.getElementById('notifyText');
+  const text = el.value.trim();
+  if(!text) return;
+  db.collection('notifications').add({
+    text: text,
+    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+  }).then(function(){
+    el.value = '';
+  });
+}
+function loadNotifications(){
+  const list = document.getElementById('notifyList');
+  db.collection('notifications').orderBy('createdAt','desc').limit(20).onSnapshot(function(snap){
+    if(snap.empty){ list.innerHTML = '<div class="empty">Henüz bildirim gönderilmedi.</div>'; return; }
+    list.innerHTML = snap.docs.map(function(d){
+      const n = d.data();
+      return '<div class="card row"><div>'+esc(n.text)+'<div class="muted">'+fmtDate(n.createdAt)+'</div></div>' +
+        '<button class="btn danger" onclick="deleteNotification(\''+d.id+'\')">Sil</button></div>';
+    }).join('');
+  });
+}
+function deleteNotification(id){
+  db.collection('notifications').doc(id).delete();
+}
+
+/* ---------- Sorun ve Öneriler ---------- */
+let feedbackKnownIds = null;
+function loadFeedback(){
+  const panel = document.getElementById('panel-feedback');
+  panel.innerHTML = '<div class="empty">Yükleniyor...</div>';
+  db.collection('feedback').orderBy('createdAt','desc').onSnapshot(function(snap){
+    document.getElementById('statFeedback').textContent = snap.size;
+    if(snap.empty){ panel.innerHTML = '<div class="empty">Henüz gelen mesaj yok.</div>'; feedbackKnownIds = new Set(); return; }
+    const currentIds = new Set(snap.docs.map(function(d){ return d.id; }));
+    if(feedbackKnownIds !== null){
+      currentIds.forEach(function(id){
+        if(!feedbackKnownIds.has(id)) pushBrowserNotif('💬 Yeni mesaj', 'Bir kullanıcı Sorun ve Öneri gönderdi.');
+      });
+    }
+    feedbackKnownIds = currentIds;
+    panel.innerHTML = snap.docs.map(function(d){
+      const f = d.data();
+      return '<div class="card"><div>'+esc(f.message)+'</div><div class="muted" style="margin-top:6px;">'+esc(f.email)+' · '+fmtDate(f.createdAt)+'</div></div>';
+    }).join('');
+  });
+}
+</script>
+</body>
+</html>
