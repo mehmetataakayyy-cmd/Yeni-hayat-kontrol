@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Yeni Hayat — Yönetim Paneli</title>
+<title>Yeni Hayat — Yönetim Paneli (v6)</title>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
@@ -119,7 +119,7 @@
   <div class="header">
     <div class="header-top">
       <div>
-        <div class="eyebrow">Yönetim Günlüğü</div>
+        <div class="eyebrow">Yönetim Günlüğü · sürüm 6</div>
         <h1 class="title">Bugüne Bakış</h1>
       </div>
       <button class="btn ghost" onclick="auth.signOut()">Çıkış Yap</button>
@@ -278,6 +278,15 @@ function tsMillis(ts){
   return 0;
 }
 
+function sortByDateDesc(docs){
+  return docs.slice().sort(function(a,b){
+    return tsMillis(b.data().createdAt) - tsMillis(a.data().createdAt);
+  });
+}
+function showErr(panel, err){
+  panel.innerHTML = '<div class="empty">Yüklenemedi: '+esc(err && err.message ? err.message : err)+'</div>';
+}
+
 /* ---------- Kullanıcılar ---------- */
 let usersKnownIds = null;
 function pickField(u, keys){
@@ -395,7 +404,7 @@ let pendingKnownIds = null;
 function loadPendingStories(){
   const panel = document.getElementById('panel-stories');
   panel.innerHTML = '<div class="empty">Yükleniyor...</div>';
-  db.collection('stories').where('status','==','pending').orderBy('createdAt','desc').onSnapshot(function(snap){
+  db.collection('stories').where('status','==','pending').onSnapshot(function(snap){
     document.getElementById('statPending').textContent = snap.size;
     const tabBtn = document.querySelector('[data-tab="stories"]');
     tabBtn.innerHTML = snap.size > 0 ? 'Onay Bekleyen<span class="count">'+snap.size+'</span>' : 'Onay Bekleyen';
@@ -407,7 +416,7 @@ function loadPendingStories(){
       });
     }
     pendingKnownIds = currentIds;
-    panel.innerHTML = snap.docs.map(function(d){
+    panel.innerHTML = sortByDateDesc(snap.docs).map(function(d){
       const s = d.data();
       const photo = s.photo ? '<img src="'+esc(s.photo)+'" style="max-width:100%; border-radius:8px; margin-bottom:8px;">' : '';
       return '<div class="card">' + photo +
@@ -418,6 +427,9 @@ function loadPendingStories(){
           '<button class="btn danger" onclick="rejectStory(\''+d.id+'\')">Reddet</button>' +
         '</div></div>';
     }).join('');
+  }, function(err){
+    document.getElementById('statPending').textContent = '!';
+    showErr(panel, err);
   });
 }
 function approveStory(id){
@@ -431,15 +443,15 @@ function rejectStory(id){
 function loadApprovedStories(){
   const panel = document.getElementById('panel-approved');
   panel.innerHTML = '<div class="empty">Yükleniyor...</div>';
-  db.collection('stories').where('status','==','approved').orderBy('createdAt','desc').onSnapshot(function(snap){
+  db.collection('stories').where('status','==','approved').onSnapshot(function(snap){
     if(snap.empty){ panel.innerHTML = '<div class="empty">Yayında paylaşım yok.</div>'; return; }
-    panel.innerHTML = snap.docs.map(function(d){
+    panel.innerHTML = sortByDateDesc(snap.docs).map(function(d){
       const s = d.data();
       return '<div class="card"><div class="storyText">"'+esc(s.text)+'"</div>' +
         '<div class="muted">— '+esc(s.name)+' · '+fmtDate(s.createdAt)+'</div>' +
         '<div class="row" style="margin-top:10px;"><button class="btn danger" onclick="deleteStory(\''+d.id+'\')">Kaldır</button></div></div>';
     }).join('');
-  });
+  }, function(err){ showErr(panel, err); });
 }
 function deleteStory(id){
   if(!confirm('Bu paylaşımı kaldırmak istediğinize emin misiniz?')) return;
@@ -478,7 +490,7 @@ let feedbackKnownIds = null;
 function loadFeedback(){
   const panel = document.getElementById('panel-feedback');
   panel.innerHTML = '<div class="empty">Yükleniyor...</div>';
-  db.collection('feedback').orderBy('createdAt','desc').onSnapshot(function(snap){
+  db.collection('feedback').onSnapshot(function(snap){
     document.getElementById('statFeedback').textContent = snap.size;
     if(snap.empty){ panel.innerHTML = '<div class="empty">Henüz gelen mesaj yok.</div>'; feedbackKnownIds = new Set(); return; }
     const currentIds = new Set(snap.docs.map(function(d){ return d.id; }));
@@ -488,11 +500,11 @@ function loadFeedback(){
       });
     }
     feedbackKnownIds = currentIds;
-    panel.innerHTML = snap.docs.map(function(d){
+    panel.innerHTML = sortByDateDesc(snap.docs).map(function(d){
       const f = d.data();
       return '<div class="card"><div>'+esc(f.message)+'</div><div class="muted" style="margin-top:6px;">'+esc(f.email || '(E-posta yok)')+' · '+fmtDate(f.createdAt)+'</div></div>';
     }).join('');
-  });
+  }, function(err){ showErr(panel, err); });
 }
 </script>
 </body>
